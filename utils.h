@@ -38,7 +38,7 @@ namespace cudabm {
 std::string strFormat(const char* format, ...);
 
 template <typename T>
-void genRandom(T* vec, unsigned long len);
+void Random(T* vec, unsigned long len);
 
 template <typename T>
 void Gemm(T* dA, T* dB, T* dC, int m, int n, int k);
@@ -46,8 +46,12 @@ void Gemm(T* dA, T* dB, T* dC, int m, int n, int k);
 template <typename T>
 bool Equal(const unsigned int n, const T* x, const T* y, const float tolerance);
 
-void genOnes(float* vec, unsigned long len);
-void Print(float* vec, size_t len);
+template <typename T>
+void Ones(T* vec, unsigned long len);
+
+template <typename T>
+void Print(T* vec, size_t len);
+
 float Sum(float* vec, size_t len);
 
 }  // namespace cudabm

@@ -44,7 +44,7 @@ std::string strFormat(const char* format, ...) {
 }
 
 template <typename T>
-void genRandom(T* vec, unsigned long len) {
+void Random(T* vec, unsigned long len) {
   std::mt19937 gen;
   std::uniform_real_distribution<> dist(-1.0, 1.0);
   for (unsigned long i = 0; i < len; i++) {
@@ -52,13 +52,15 @@ void genRandom(T* vec, unsigned long len) {
   }
 }
 
-void genOnes(float* vec, unsigned long len) {
+template <typename T>
+void Ones(T* vec, unsigned long len) {
   for (unsigned long i = 0; i < len; i++) {
     vec[i] = 1.f;
   }
 }
 
-void Print(float* vec, size_t len) {
+template <typename T>
+void Print(T* vec, size_t len) {
   for (int i = 0; i < len; i++) {
     printf("%f ", vec[i]);
     if (i % 10 == 0) {
@@ -66,7 +68,6 @@ void Print(float* vec, size_t len) {
     }
   }
 }
-
 float Sum(float* vec, size_t len) {
   float sum = 0.f;
   for (int i = 0; i < len; i++) {
@@ -127,11 +128,13 @@ template bool Equal<float>(const unsigned int n, const float* x, const float* y,
 template bool Equal<half>(const unsigned int n, const half* x, const half* y,
                           const float tolerance);
 
-template void genRandom<float>(float* vec, unsigned long len);
-template void genRandom<half>(half* vec, unsigned long len);
+template void Random<float>(float* vec, unsigned long len);
+template void Random<half>(half* vec, unsigned long len);
 
 template void Gemm<float>(float* dA, float* dB, float* dC, int m, int n, int k);
-template void Gemm<__half>(__half* dA, __half* dB, __half* dC, int m, int n,
-                           int k);
+template void Gemm<half>(half* dA, half* dB, half* dC, int m, int n, int k);
+
+template void Ones<float>(float* vec, unsigned long len);
+template void Ones<half>(half* vec, unsigned long len);
 
 }  // namespace cudabm
