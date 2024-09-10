@@ -54,6 +54,7 @@ void Random(T* vec, unsigned long len) {
 
 template <typename T>
 void Ones(T* vec, unsigned long len) {
+  printf("value : %ld \n", len);
   for (unsigned long i = 0; i < len; i++) {
     vec[i] = 1.f;
   }
@@ -76,26 +77,31 @@ float Sum(float* vec, size_t len) {
   return sum;
 }
 
-template <typename T>
-void Gemm(T* dA, T* dB, T* dC, int m, int n, int k) {
-  cublasHandle_t blas_handle;
-  cublasCreate(&blas_handle);
-
-  // C = A X B
+template <typename T, typename S>
+int cublas_gemm_ex(cublasHandle_t handle, cublasOperation_t transA,
+                   cublasOperation_t transB, int m, int n, int k, T* A, T* B,
+                   T* C, int lda, int ldb, int ldc, S* alpha, S* beta,
+                   int algo) {
+  cudaDataType_t AType, BType, CType, ComputeType;
   if (std::is_same<T, float>::value) {
-    float alpha = 1.0f;
-    float beta = 0.0f;
-    cublasSgemm(blas_handle, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, &alpha,
-                (float*)dB, m, (float*)dA, k, &beta, (float*)dC, m);
-
+    AType = BType = CType = ComputeType = CUDA_R_32F;
   } else if (std::is_same<T, __half>::value) {
-    __half alpha = 1.0f;
-    __half beta = 0.0f;
-    cublasHgemm(blas_handle, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, &alpha,
-                (__half*)dB, m, (__half*)dA, k, &beta, (__half*)dC, m);
+    AType = BType = CType = ComputeType = CUDA_R_16F;
+  } else if (std::is_same<T, int8_t>::value) {
+    AType = BType = CUDA_R_8I;
+    CType = ComputeType = CUDA_R_32I;
+  } else {
+    printf("Not supported data type.");
+    return -1;
   }
-
-  cublasDestroy(blas_handle);
+  cublasStatus_t status;
+  status = cublasGemmEx(handle, transA, transB, m, n, k, alpha, A, AType, lda,
+                        B, BType, ldb, beta, C, CType, ldc, ComputeType,
+                        static_cast<cublasGemmAlgo_t>(algo));
+  if (status == CUBLAS_STATUS_SUCCESS)
+    return 1;
+  else
+    return -1;
 }
 
 // Equal
@@ -123,6 +129,28 @@ bool Equal(const unsigned int n, const T* x, const T* y,
   return ok;
 }
 
+template <>
+void Gemm<float>(float* dA, float* dB, float* dC, int m, int n, int k) {
+  float alpha = 1.0f;
+  float beta = 0.0f;
+  cublasHandle_t blas_handle;
+  cublasCreate(&blas_handle);
+  cublasSgemm(blas_handle, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha, dB, n, dA,
+              k, &beta, dC, n);
+  cublasDestroy(blas_handle);
+}
+
+template <>
+void Gemm<half>(half* dA, half* dB, half* dC, int m, int n, int k) {
+  half alpha = __float2half(1.0f);
+  half beta = __float2half(0.0f);
+  cublasHandle_t blas_handle;
+  cublasCreate(&blas_handle);
+  cublasHgemm(blas_handle, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha, dB, n, dA,
+              k, &beta, dC, n);
+  cublasDestroy(blas_handle);
+}
+
 template bool Equal<float>(const unsigned int n, const float* x, const float* y,
                            const float tolerance);
 template bool Equal<half>(const unsigned int n, const half* x, const half* y,
@@ -130,9 +158,6 @@ template bool Equal<half>(const unsigned int n, const half* x, const half* y,
 
 template void Random<float>(float* vec, unsigned long len);
 template void Random<half>(half* vec, unsigned long len);
-
-template void Gemm<float>(float* dA, float* dB, float* dC, int m, int n, int k);
-template void Gemm<half>(half* dA, half* dB, half* dC, int m, int n, int k);
 
 template void Ones<float>(float* vec, unsigned long len);
 template void Ones<half>(half* vec, unsigned long len);
